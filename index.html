@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BPO">
+<meta name="theme-color" content="#0f0f0f">
+<title>BPO Financeiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0f0f0f;
+  --s1: #1a1a1a;
+  --s2: #222;
+  --bd: #2a2a2a;
+  --ac: #c8f135;
+  --ac2: #f1c835;
+  --tx: #f0f0f0;
+  --t2: #888;
+  --t3: #444;
+  --red: #ff5a5a;
+  --grn: #5aff8a;
+  --r: 14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;font-size:15px;overscroll-behavior:none}
+input,select,textarea,button{font-family:'DM Sans',sans-serif}
+
+/* ── LAYOUT ── */
+.app{display:flex;flex-direction:column;height:100dvh}
+.content{flex:1;overflow-y:auto;padding:24px 16px 100px;max-width:640px;margin:0 auto;width:100%}
+.nav{position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--bd);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;background:none;border:none;color:var(--t3);font-size:10px;font-family:'DM Mono',monospace;cursor:pointer;letter-spacing:.5px;transition:color .15s;border-top:2px solid transparent}
+.nav-btn.active{color:var(--ac);border-top-color:var(--ac)}
+.nav-btn .ic{font-size:22px;line-height:1}
+
+/* ── TABS ── */
+.tab{display:none}.tab.active{display:block}
+
+/* ── TYPOGRAPHY ── */
+.page-title{font-family:'Syne',sans-serif;font-weight:800;font-size:26px;letter-spacing:-1px;margin-bottom:4px}
+.page-sub{color:var(--t2);font-size:13px;margin-bottom:24px}
+
+/* ── CARDS ── */
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:18px 20px;margin-bottom:12px}
+.card-label{font-size:11px;color:var(--t3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:block}
+.card-value{font-family:'Syne',sans-serif;font-weight:800;font-size:28px}
+.red{color:var(--red)}.grn{color:var(--grn)}.ac{color:var(--ac)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+
+/* ── FORM ── */
+.field{margin-bottom:14px}
+.field label{font-size:11px;color:var(--t3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:10px;color:var(--tx);font-size:15px;padding:13px 16px;outline:none;transition:border .2s;appearance:none;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--ac)}
+.field textarea{resize:none;min-height:88px;line-height:1.5}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+
+/* ── BUTTONS ── */
+.btn{width:100%;background:var(--ac);color:#000;border:none;border-radius:10px;padding:16px;font-size:15px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;transition:all .15s;letter-spacing:.2px}
+.btn:active{transform:scale(.98);opacity:.9}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-ghost{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:10px;padding:14px;font-size:14px;cursor:pointer;flex:1;transition:all .15s}
+.btn-ghost:active{border-color:var(--t2);color:var(--tx)}
+.btn-row{display:flex;gap:10px;margin-top:16px}
+.btn-sm{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:8px;padding:7px 14px;font-size:12px;font-family:'DM Mono',monospace;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-sm:active{border-color:var(--t2);color:var(--tx)}
+
+/* ── STATUS ── */
+.status{padding:14px 16px;border-radius:10px;font-size:13px;font-family:'DM Mono',monospace;margin-top:14px;display:none;line-height:1.5;word-break:break-word}
+.status.ok{display:block;background:rgba(90,255,138,.1);border:1px solid rgba(90,255,138,.3);color:var(--grn)}
+.status.err{display:block;background:rgba(255,90,90,.1);border:1px solid rgba(255,90,90,.3);color:var(--red)}
+.status.load{display:block;background:rgba(200,241,53,.1);border:1px solid rgba(200,241,53,.3);color:var(--ac)}
+
+/* ── PREVIEW ── */
+.preview{background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-top:16px;display:none}
+.preview.show{display:block}
+.preview-title{font-size:11px;color:var(--ac);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.grid2f{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── DONUT ── */
+.donut-wrap{display:flex;align-items:center;gap:16px}
+.legend{flex:1;overflow:hidden}
+.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.legend-name{font-size:12px;color:var(--t2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend-val{font-size:11px;font-family:'DM Mono',monospace;color:var(--t3)}
+
+/* ── BAR CHART ── */
+.bars{display:flex;align-items:flex-end;gap:5px;height:90px;padding:0 2px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar-fill{width:100%;border-radius:4px 4px 0 0;min-height:3px;transition:height .4s}
+.bar-lbl{font-size:9px;font-family:'DM Mono',monospace;color:var(--t3)}
+
+/* ── TOP LIST ── */
+.top-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.top-item:last-child{border-bottom:none}
+.top-name{font-size:13px;width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-track{flex:1;background:var(--s2);border-radius:4px;height:5px;overflow:hidden}
+.top-fill{height:100%;background:var(--ac);border-radius:4px}
+.top-val{font-size:11px;font-family:'DM Mono',monospace;color:var(--t2);text-align:right;min-width:80px}
+
+/* ── LANCAMENTOS LIST ── */
+.lanc-item{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:8px}
+.lanc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.lanc-desc{font-weight:600;font-size:14px;flex:1}
+.lanc-val{font-family:'DM Mono',monospace;font-weight:700;font-size:14px;white-space:nowrap}
+.lanc-meta{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;background:var(--s2);border:1px solid var(--bd)}
+.lanc-date{font-size:11px;color:var(--t3);font-family:'DM Mono',monospace}
+.lanc-forma{font-size:11px;color:var(--t3)}
+
+/* ── FILTERS ── */
+.filters{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filter-chip{background:var(--s2);border:1px solid var(--bd);border-radius:20px;color:var(--t2);font-size:12px;padding:7px 14px;white-space:nowrap;cursor:pointer;font-family:'DM Mono',monospace;appearance:none;-webkit-appearance:none;outline:none}
+.filter-chip.active-filter{border-color:var(--ac);color:var(--ac);background:rgba(200,241,53,.07)}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:60px 20px;color:var(--t3)}
+.empty .ic{font-size:40px;margin-bottom:12px}
+
+/* ── SPINNER ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(200,241,53,.3);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+
+/* ── HEADER ROW ── */
+.hrow{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+
+/* ── CONFIG ── */
+.cfg-info{margin-top:20px;padding-top:18px;border-top:1px solid var(--bd);font-size:12px;color:var(--t3);font-family:'DM Mono',monospace;line-height:2}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard" class="tab active">
+      <div class="hrow">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub" id="dash-sub">carregando...</div>
+        </div>
+        <button class="btn-sm" onclick="loadAll()">↻ atualizar</button>
+      </div>
+
+      <div id="dash-loading" class="empty"><div class="ic">⏳</div>Carregando dados...</div>
+
+      <div id="dash-content" style="display:none">
+        <div class="grid2">
+          <div class="card" style="grid-column:1/-1">
+            <span class="card-label">Total gasto no mês</span>
+            <div class="card-value red" id="dash-total">R$ 0,00</div>
+          </div>
+          <div class="card">
+            <span class="card-label">Lançamentos</span>
+            <div class="card-value ac" id="dash-count">0</div>
+          </div>
+          <div class="card">
+            <span class="card-label">Maior categoria</span>
+            <div style="font-weight:700;font-size:16px;margin-top:4px" id="dash-maior">—</div>
+          </div>
+        </div>
+
+        <div class="card" id="dash-donut-card">
+          <span class="card-label">Por centro de custo</span>
+          <div class="donut-wrap">
+            <canvas id="chart-donut" width="140" height="140" style="flex-shrink:0"></canvas>
+            <div class="legend" id="dash-legend"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <span class="card-label" id="bar-title">Evolução 2025</span>
+          <div class="bars" id="dash-bars"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LANÇAR -->
+    <div id="tab-lancar" class="tab">
+      <div class="page-title">Lançamento Rápido</div>
+      <div class="page-sub">Digite em texto livre — a IA interpreta</div>
+
+      <div class="card">
+        <div class="field">
+          <label>O que você gastou?</label>
+          <textarea id="input-texto" placeholder="mercado 150 reais nubank hoje&#10;pizza 85 ontem restaurante&#10;uber 32 reais bruno"></textarea>
+        </div>
+        <div style="font-size:12px;color:var(--t3);font-family:'DM Mono',monospace;margin-bottom:16px">
+          💡 valor · categoria · pagamento · data
+        </div>
+        <button class="btn" id="btn-interpretar" onclick="interpretar()">✦ Interpretar</button>
+
+        <div class="preview" id="preview">
+          <div class="preview-title">✓ confirme os dados</div>
+          <div class="grid2f">
+            <div class="field">
+              <label>Data</label>
+              <input type="date" id="p-data">
+            </div>
+            <div class="field">
+              <label>Valor (R$)</label>
+              <input type="number" id="p-valor" step="0.01" min="0">
+            </div>
+            <div class="field">
+              <label>Centro de Custo</label>
+              <select id="p-centro"></select>
+            </div>
+            <div class="field">
+              <label>Forma de Pgto</label>
+              <select id="p-forma"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Descrição</label>
+            <input type="text" id="p-desc">
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="btn-salvar" onclick="salvar()" style="flex:2">💾 Salvar no Sheets</button>
+            <button class="btn-ghost" onclick="cancelar()">Cancelar</button>
+          </div>
+        </div>
+
+        <div class="status" id="status-lancar"></div>
+      </div>
+    </div>
+
+    <!-- RELATÓRIO -->
+    <div id="tab-relatorio" class="tab">
+      <div class="hrow">
+        <div>
+          <div class="page-title">Relatório</div>
+          <div class="page-sub" id="rel-sub">0 lançamentos</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm" onclick="loadAll()">↻</button>
+          <button class="btn-sm" style="color:var(--ac);border-color:var(--ac)" onclick="exportExcel()">⬇ Excel</button>
+        </div>
+      </div>
+
+      <div class="filters" id="filtros"></div>
+      <div id="rel-lista"></div>
+    </div>
+
+    <!-- CONFIG -->
+    <div id="tab-config" class="tab">
+      <div class="page-title">Configurações</div>
+      <div class="page-sub">Chave Anthropic para IA avançada</div>
+
+      <div class="card">
+        <div class="field">
+          <label>Chave API Anthropic (opcional)</label>
+          <input type="password" id="cfg-key" placeholder="sk-ant-..." autocomplete="off">
+        </div>
+        <button class="btn" onclick="salvarCfg()">Salvar</button>
+        <div class="status" id="status-cfg"></div>
+        <div class="cfg-info">
+          <div>📊 Google Sheets — conectado</div>
+          <div>🔗 Apps Script — configurado</div>
+          <div>📱 Modo PWA — disponível</div>
+          <div style="margin-top:8px;color:var(--t3);font-size:11px">Sem a chave Anthropic o app usa interpretação local — funciona bem para frases simples.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- NAV -->
+  <nav class="nav">
+    <button class="nav-btn active" id="nav-dashboard" onclick="showTab('dashboard',this)">
+      <span class="ic">📊</span><span>Dashboard</span>
+    </button>
+    <button class="nav-btn" id="nav-lancar" onclick="showTab('lancar',this)">
+      <span class="ic">⚡</span><span>Lançar</span>
+    </button>
+    <button class="nav-btn" id="nav-relatorio" onclick="showTab('relatorio',this)">
+      <span class="ic">📋</span><span>Relatório</span>
+    </button>
+    <button class="nav-btn" id="nav-config" onclick="showTab('config',this)">
+      <span class="ic">⚙️</span><span>Config</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// CONFIGURAÇÃO
+// ═══════════════════════════════════════
+const SHEET_ID   = "10ZYyA98TbcTOX4pjOcUggRuKJDpcXSZDyxNcjePYmwA";
+const API_KEY    = "AIzaSyDyRYJzk1U8xRJl5_MsXJzdfnt_iDE4b5k";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx5OATQl1HvyeZWtqsXkqep2Awv22Rd3WpP2CMt79bfX0GNkOcXXyeBn2FiXLhm9K60/exec";
+
+const CENTROS_DEF = ["Restaurante","Roupas","Mercado","Combustível","Viagem","Carro","Bens Materiais","Lazer","Estudos","Escola das Meninas","Construção","Internet/TV","Dízimo","Investimento","Bruno","Érica","Heloísa","Casa","Empresa","Seguros","Plano de Saúde","Previdência","Poupança"];
+const FORMAS_DEF  = ["Itaú Débito","Caixa Débito","Nubank Bruno","Nubank Érica","Nubank Conta","Itaú Bruno","VA","VR"];
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const CORES = ["#c8f135","#f1c835","#5aff8a","#ff5a5a","#5ac8ff","#ff8a5a","#c85aff","#5affda","#ffc85a","#ff5ac8"];
+
+let centros = [...CENTROS_DEF];
+let formas  = [...FORMAS_DEF];
+let lancamentos = [];
+let filtroMes = "", filtroCentro = "", filtroForma = "";
+let donutChart = null;
+
+const fmt = v => `R$ ${Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:2})}`;
+const hoje    = () => new Date().toISOString().split("T")[0];
+const ontem   = () => new Date(Date.now()-86400000).toISOString().split("T")[0];
+const antKey  = () => localStorage.getItem("bpo_ant") || "";
+
+// ═══════════════════════════════════════
+// GOOGLE SHEETS — LEITURA
+// ═══════════════════════════════════════
+async function sheetsGet(range) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?key=${API_KEY}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("Sheets leitura: " + r.status);
+  return r.json();
+}
+
+// ═══════════════════════════════════════
+// APPS SCRIPT — ESCRITA via JSONP
+// ═══════════════════════════════════════
+function scriptPost(payload) {
+  return new Promise((resolve, reject) => {
+    const cb   = "bpo" + Date.now();
+    const s    = document.createElement("script");
+    const tid  = setTimeout(() => cleanup(reject, "Timeout — verifique conexão"), 12000);
+
+    function cleanup(fn, msg) {
+      clearTimeout(tid);
+      delete window[cb];
+      if (document.body.contains(s)) document.body.removeChild(s);
+      fn && fn(new Error(msg));
+    }
+
+    window[cb] = json => {
+      cleanup();
+      if (json.status === "erro") reject(new Error(json.msg));
+      else resolve(json);
+    };
+
+    const params = new URLSearchParams({ payload: JSON.stringify(payload), callback: cb });
+    s.src = `${SCRIPT_URL}?${params}`;
+    s.onerror = () => cleanup(reject, "Falha ao conectar com o Apps Script");
+    document.body.appendChild(s);
+  });
+}
+
+// ═══════════════════════════════════════
+// CARREGAR DADOS
+// ═══════════════════════════════════════
+async function loadAll() {
+  document.getElementById("dash-loading").style.display = "block";
+  document.getElementById("dash-content").style.display = "none";
+  try {
+    const [c, f, l] = await Promise.all([
+      sheetsGet("Centros de Custo!A2:A100"),
+      sheetsGet("Formas de Pagamento!A1:A50"),
+      sheetsGet("Lançamentos!A2:G5000")
+    ]);
+    if (c.values) centros = c.values.flat().filter(Boolean);
+    if (f.values) formas  = f.values.flat().filter(Boolean);
+    lancamentos = l.values
+      ? l.values.map(r => ({
+          data: r[0]||"", descricao: r[1]||"", centro: r[2]||"",
+          valor: parseFloat(r[3])||0, forma: r[4]||"", mes: r[5]||"", ano: r[6]||""
+        })).filter(x => x.valor !== 0)
+      : [];
+  } catch(e) { console.warn(e.message); }
+  renderDashboard();
+  renderRelatorio();
+  document.getElementById("dash-loading").style.display = "none";
+  document.getElementById("dash-content").style.display = "block";
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
+function renderDashboard() {
+  const anoAtual = new Date().getFullYear().toString();
+  const mesAtual = MESES[new Date().getMonth()];
+  document.getElementById("dash-sub").textContent = `${mesAtual} ${anoAtual}`;
+  document.getElementById("bar-title").textContent = `Evolução ${anoAtual}`;
+
+  const doMes = lancamentos.filter(l => l.mes === mesAtual && l.ano === anoAtual);
+  const total = doMes.reduce((s,l) => s + Math.abs(l.valor), 0);
+  document.getElementById("dash-total").textContent = fmt(total);
+  document.getElementById("dash-count").textContent = doMes.length;
+
+  // Por centro
+  const mapa = {};
+  doMes.forEach(l => { mapa[l.centro] = (mapa[l.centro]||0) + Math.abs(l.valor); });
+  const sorted = Object.entries(mapa).sort((a,b) => b[1]-a[1]);
+  document.getElementById("dash-maior").textContent = sorted[0]?.[0] || "—";
+
+  // Donut
+  const ctx = document.getElementById("chart-donut").getContext("2d");
+  if (donutChart) donutChart.destroy();
+  if (sorted.length > 0) {
+    donutChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: sorted.slice(0,8).map(s=>s[0]),
+        datasets: [{ data: sorted.slice(0,8).map(s=>s[1]), backgroundColor: CORES, borderWidth: 0, hoverOffset: 6 }]
+      },
+      options: {
+        cutout: "55%", responsive: false,
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: { label: c => ` ${fmt(c.raw)}` }
+        }}
+      }
+    });
+    document.getElementById("dash-legend").innerHTML = sorted.slice(0,6).map(([n,v],i) =>
+      `<div class="legend-item">
+        <div class="legend-dot" style="background:${CORES[i]}"></div>
+        <span class="legend-name">${n}</span>
+        <span class="legend-val">${fmt(v)}</span>
+      </div>`
+    ).join("");
+  }
+
+  // Barras
+  const maxBar = Math.max(...MESES.map(m => lancamentos.filter(l=>l.mes===m&&l.ano===anoAtual).reduce((s,l)=>s+Math.abs(l.valor),0)), 1);
+  document.getElementById("dash-bars").innerHTML = MESES.map((m,i) => {
+    const v = lancamentos.filter(l=>l.mes===m&&l.ano===anoAtual).reduce((s,l)=>s+Math.abs(l.valor),0);
+    const h = Math.max((v/maxBar)*80,v>0?4:0);
+    const isNow = i === new Date().getMonth();
+    return `<div class="bar-col">
+      <div class="bar-fill" style="height:${h}px;background:${isNow?'var(--ac)':'var(--bd)'}"></div>
+      <div class="bar-lbl" style="color:${isNow?'var(--ac)':'var(--t3)'}">${m.substring(0,3)}</div>
+    </div>`;
+  }).join("");
+}
+
+// ═══════════════════════════════════════
+// RELATÓRIO
+// ═══════════════════════════════════════
+function renderRelatorio() {
+  let dados = [...lancamentos];
+  if (filtroMes)    dados = dados.filter(l => l.mes    === filtroMes);
+  if (filtroCentro) dados = dados.filter(l => l.centro === filtroCentro);
+  if (filtroForma)  dados = dados.filter(l => l.forma  === filtroForma);
+  dados.sort((a,b) => b.data.localeCompare(a.data));
+
+  document.getElementById("rel-sub").textContent = `${dados.length} lançamento${dados.length!==1?"s":""}`;
+
+  // Filtros
+  const mesesUsados   = [...new Set(lancamentos.map(l=>l.mes).filter(Boolean))];
+  const centrosUsados = [...new Set(lancamentos.map(l=>l.centro).filter(Boolean))];
+  const formasUsadas  = [...new Set(lancamentos.map(l=>l.forma).filter(Boolean))];
+
+  document.getElementById("filtros").innerHTML = `
+    <select class="filter-chip ${filtroMes?'active-filter':''}" onchange="filtroMes=this.value;renderRelatorio()">
+      <option value="">Todos os meses</option>
+      ${mesesUsados.map(m=>`<option value="${m}" ${m===filtroMes?"selected":""}>${m}</option>`).join("")}
+    </select>
+    <select class="filter-chip ${filtroCentro?'active-filter':''}" onchange="filtroCentro=this.value;renderRelatorio()">
+      <option value="">Todos os centros</option>
+      ${centrosUsados.map(c=>`<option value="${c}" ${c===filtroCentro?"selected":""}>${c}</option>`).join("")}
+    </select>
+    <select class="filter-chip ${filtroForma?'active-filter':''}" onchange="filtroForma=this.value;renderRelatorio()">
+      <option value="">Todas as formas</option>
+      ${formasUsadas.map(f=>`<option value="${f}" ${f===filtroForma?"selected":""}>${f}</option>`).join("")}
+    </select>`;
+
+  if (dados.length === 0) {
+    document.getElementById("rel-lista").innerHTML = `<div class="empty"><div class="ic">📭</div>Nenhum lançamento</div>`;
+    return;
+  }
+
+  document.getElementById("rel-lista").innerHTML = dados.map(l => `
+    <div class="lanc-item">
+      <div class="lanc-top">
+        <div class="lanc-desc">${l.descricao || "—"}</div>
+        <div class="lanc-val ${l.valor<0?'red':'grn'}">${fmt(l.valor)}</div>
+      </div>
+      <div class="lanc-meta">
+        <span class="badge">${l.centro}</span>
+        <span class="lanc-date">${l.data}</span>
+        <span class="lanc-forma">${l.forma}</span>
+      </div>
+    </div>`).join("");
+}
+
+// ═══════════════════════════════════════
+// INTERPRETAR TEXTO
+// ═══════════════════════════════════════
+async function interpretar() {
+  const texto = document.getElementById("input-texto").value.trim();
+  if (!texto) return;
+  const btn = document.getElementById("btn-interpretar");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Interpretando...';
+  setStatus("lancar","","");
+
+  let dados;
+  try {
+    if (antKey()) {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type":"application/json","x-api-key":antKey(),"anthropic-version":"2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514", max_tokens: 300,
+          messages: [{ role:"user", content:
+            `Interprete e retorne APENAS JSON sem markdown:\n{"data":"YYYY-MM-DD","valor":número_positivo,"centro":"um de: ${centros.join(",")}","forma":"um de: ${formas.join(",")}","descricao":"curta"}\nHoje:${hoje()}, Ontem:${ontem()}\nTexto:"${texto}"`
+          }]
+        })
+      });
+      const j = await res.json();
+      dados = JSON.parse(j.content[0].text.trim().replace(/```json|```/g,"").trim());
+    } else {
+      dados = interpretarLocal(texto);
+    }
+  } catch(e) {
+    dados = interpretarLocal(texto);
+  }
+
+  preencherPreview(dados);
+  btn.disabled = false;
+  btn.innerHTML = "✦ Interpretar";
+}
+
+function interpretarLocal(texto) {
+  const t = texto.toLowerCase();
+  const vm = t.match(/(\d+(?:[,.]\d{1,2})?)/);
+  const valor = vm ? parseFloat(vm[1].replace(",",".")) : 0;
+  let data = hoje();
+  if (t.includes("ontem")) data = ontem();
+  const dm = t.match(/(\d{1,2})\/(\d{1,2})/);
+  if (dm) data = `${new Date().getFullYear()}-${dm[2].padStart(2,"0")}-${dm[1].padStart(2,"0")}`;
+  let centro = "Mercado";
+  for (const c of centros) { if (t.includes(c.toLowerCase())) { centro=c; break; } }
+  if (t.match(/restaurante|pizza|açaí|cafe|lanche|almoço|jantar|esfiha/)) centro="Restaurante";
+  else if (t.match(/mercado|super/)) centro="Mercado";
+  else if (t.match(/uber|gasolina|combustiv|posto/)) centro="Combustível";
+  else if (t.match(/roupa|calçado|tênis/)) centro="Roupas";
+  else if (t.match(/carro|revisão|oficina/)) centro="Carro";
+  let forma = formas[0]||"Nubank Bruno";
+  if (t.match(/itaú|itau/)) forma="Itaú Débito";
+  else if (t.match(/nubank.?érica|nubank.?erica/)) forma="Nubank Érica";
+  else if (t.includes("nubank")) forma="Nubank Bruno";
+  else if (t.includes("caixa")) forma="Caixa Débito";
+  else if (t.match(/ va | vale.?ali/)) forma="VA";
+  else if (t.match(/ vr | vale.?ref/)) forma="VR";
+  const descricao = texto.replace(/\d+(?:[,.]\d{1,2})?\s*(?:reais?|r\$)?/gi,"").replace(/hoje|ontem/gi,"").trim().substring(0,50)||"Lançamento";
+  return { data, valor, centro, forma, descricao };
+}
+
+function preencherPreview(d) {
+  document.getElementById("p-data").value  = d.data;
+  document.getElementById("p-valor").value = d.valor;
+  document.getElementById("p-desc").value  = d.descricao;
+  document.getElementById("p-centro").innerHTML = centros.map(c=>`<option ${c===d.centro?"selected":""}>${c}</option>`).join("");
+  document.getElementById("p-forma").innerHTML  = formas.map(f=>`<option ${f===d.forma?"selected":""}>${f}</option>`).join("");
+  document.getElementById("preview").classList.add("show");
+}
+
+function cancelar() {
+  document.getElementById("preview").classList.remove("show");
+  document.getElementById("input-texto").value = "";
+  setStatus("lancar","","");
+}
+
+// ═══════════════════════════════════════
+// SALVAR
+// ═══════════════════════════════════════
+async function salvar() {
+  const data   = document.getElementById("p-data").value;
+  const valor  = parseFloat(document.getElementById("p-valor").value);
+  const centro = document.getElementById("p-centro").value;
+  const forma  = document.getElementById("p-forma").value;
+  const desc   = document.getElementById("p-desc").value;
+
+  if (!data || !valor || !centro) {
+    setStatus("lancar","err","❌ Preencha data, valor e centro de custo.");
+    return;
+  }
+
+  const btn = document.getElementById("btn-salvar");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Salvando...';
+
+  const d   = new Date(data + "T12:00:00");
+  const mes = MESES[d.getMonth()];
+  const ano = d.getFullYear().toString();
+  const dataFmt = `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}/${ano}`;
+
+  try {
+    await scriptPost({ data: dataFmt, descricao: desc, centro, valor: -Math.abs(valor), forma, mes, ano });
+    setStatus("lancar","ok","✓ Salvo com sucesso!");
+    document.getElementById("preview").classList.remove("show");
+    document.getElementById("input-texto").value = "";
+    await loadAll();
+  } catch(e) {
+    setStatus("lancar","err","❌ " + e.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = "💾 Salvar no Sheets";
+}
+
+// ═══════════════════════════════════════
+// EXPORT EXCEL
+// ═══════════════════════════════════════
+function exportExcel() {
+  let dados = [...lancamentos];
+  if (filtroMes)    dados = dados.filter(l => l.mes===filtroMes);
+  if (filtroCentro) dados = dados.filter(l => l.centro===filtroCentro);
+  if (filtroForma)  dados = dados.filter(l => l.forma===filtroForma);
+
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["Data","Descrição","Centro de Custo","Valor","Forma de Pagamento","Mês","Ano"],
+    ...dados.map(l => [l.data, l.descricao, l.centro, l.valor, l.forma, l.mes, l.ano])
+  ]);
+  ws["!cols"] = [12,28,18,10,16,10,6].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
+  XLSX.writeFile(wb, `BPO_Financeiro_${filtroMes||"todos"}.xlsx`);
+}
+
+// ═══════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════
+function salvarCfg() {
+  const v = document.getElementById("cfg-key").value.trim();
+  localStorage.setItem("bpo_ant", v);
+  setStatus("cfg","ok","✓ Chave salva!");
+}
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+function setStatus(id, type, msg) {
+  const el = document.getElementById("status-" + id);
+  el.className = "status" + (type ? " " + type : "");
+  el.textContent = msg;
+}
+
+function showTab(name, btn) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  btn.classList.add("active");
+  if (name === "config") {
+    const k = antKey();
+    if (k) document.getElementById("cfg-key").value = k;
+  }
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+loadAll();
+</script>
+</body>
+</html>
